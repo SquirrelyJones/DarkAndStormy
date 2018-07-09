@@ -36,3 +36,4 @@ sysinfo.txt
 *.unitypackage
 ProjectSettings/
 UnityPackageManager/manifest.json
+Source/
