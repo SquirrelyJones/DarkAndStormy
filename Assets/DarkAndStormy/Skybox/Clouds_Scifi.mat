@@ -58,6 +58,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _FlowTex1:
+        m_Texture: {fileID: 2800000, guid: 72b1c2a1fb763c544985ef437010fd4e, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _MainTex:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -85,7 +89,7 @@ Material:
     - _Cloud3Amount: 1.09
     - _CloudBias: 0
     - _CloudDensity: 7
-    - _CloudHeight: 200
+    - _CloudHeight: 500
     - _CloudHeightAdjust: -0.1
     - _CloudHeightContrast: 0.1
     - _CloudScale: 1
@@ -96,6 +100,8 @@ Material:
     - _DistAmount: 1
     - _DistSpeed: -3
     - _DstBlend: 0
+    - _FlowAmount: 1
+    - _FlowSpeed: -3
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
@@ -103,7 +109,7 @@ Material:
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
-    - _Scale: 4
+    - _Scale: 0.5
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _Speed: 0.01

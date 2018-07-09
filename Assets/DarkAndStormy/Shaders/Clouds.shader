@@ -3,12 +3,14 @@
 	Properties
 	{
 		[NoScaleOffset] _CloudTex1 ("Clouds 1", 2D) = "white" {}
-		[NoScaleOffset] _DistortTex1 ("Distort Tex 1", 2D) = "grey" {}
+		[NoScaleOffset] _FlowTex1 ("Flow Tex 1", 2D) = "grey" {}
 		_Tiling1("Tiling 1", Vector) = (1,1,0,0)
 
 		[NoScaleOffset] _CloudTex2 ("Clouds 2", 2D) = "white" {}
 		[NoScaleOffset] _Tiling2("Tiling 2", Vector) = (1,1,0,0)
 		_Cloud2Amount ("Cloud 2 Amount", float) = 0.5
+		_FlowSpeed ("Flow Speed", float) = 1
+		_FlowAmount ("Flow Amount", float) = 1
 
 		[NoScaleOffset] _WaveTex ("Wave", 2D) = "white" {}
 		_TilingWave("Tiling Wave", Vector) = (1,1,0,0)
@@ -22,9 +24,6 @@
 		_TilingColor("Tiling Color", Vector) = (1,1,0,0)
 		_ColPow ("Color Power", float) = 1
 		_ColFactor ("Color Factor", float) = 1
-
-		_DistSpeed ("Distort Speed", float) = 1
-		_DistAmount ("Distort Amount", float) = 1
 
 		_Color ("Color", Color) = (1.0,1.0,1.0,1)
 		_Color2 ("Color2", Color) = (1.0,1.0,1.0,1)
@@ -56,15 +55,8 @@
 			#define SKYBOX
 			#include "FogInclude.cginc"
 
-			struct v2f
-			{
-				float4 vertex : SV_POSITION;
-				float2 uv : TEXCOORD0;
-				float3 worldPos: TEXCOORD1; 
-			};
-
 			sampler2D _CloudTex1;
-			sampler2D _DistortTex1;
+			sampler2D _FlowTex1;
 			sampler2D _CloudTex2;
 			sampler2D _WaveTex;
 
@@ -78,8 +70,8 @@
 			float _Cloud2Amount;
 			float _WaveAmount;
 			float _WaveDistort;
-			float _DistSpeed;
-			float _DistAmount;
+			float _FlowSpeed;
+			float _FlowAmount;
 
 			sampler2D _ColorTex;
 			float4 _TilingColor;
@@ -94,23 +86,24 @@
 
 			float _CloudHeight;
 			float _Scale;
-
 			float _Speed;
 
 			float4 _LightSpread;
 
 			float _ColPow;
 			float _ColFactor;
+
+			struct v2f
+			{
+				float4 vertex : SV_POSITION;
+				float3 worldPos : TEXCOORD0; 
+			};
 			
 			v2f vert (appdata_full v)
 			{
 				v2f o;
 				o.vertex = UnityObjectToClipPos(v.vertex);
-				o.uv = v.texcoord.xy;
-
-				float3 worldPos = mul( unity_ObjectToWorld, v.vertex ).xyz;
-				o.worldPos = worldPos;
-
+				o.worldPos = mul( unity_ObjectToWorld, v.vertex ).xyz;
 				return o;
 			}
 
@@ -118,35 +111,29 @@
 			    return frac( sin( dot( co.xyz ,float3(17.2486,32.76149, 368.71564) ) ) * 32168.47512);
 			}
 
-			float rand2( float2 co){
-				return frac( sin( dot( co.xy ,float2(17.2486,32.76149) ) ) * 32168.47512);
-			}
-
-			half4 SampleClouds ( float3 uv, float4 tiling1, float4 tiling2, float4 tiling3, float4 tiling4, half3 sunTrans, half densityAdd ){
+			half4 SampleClouds ( float3 uv, half3 sunTrans, half densityAdd ){
 
 				// wave distortion
-				float3 coordsWave = float3( uv.xy * tiling3.xy + tiling3.zw, 0.0 );
+				float3 coordsWave = float3( uv.xy *_TilingWave.xy + ( _TilingWave.zw * _Speed * _Time.y ), 0.0 );
 				half3 wave = tex2Dlod( _WaveTex, float4(coordsWave.xy,0,0) ).xyz;
 
 				// first cloud layer
-				float2 coords1 = uv.xy * tiling1.xy + tiling1.zw + ( wave.xy - 0.5 ) * _WaveDistort;
+				float2 coords1 = uv.xy * _Tiling1.xy + ( _Tiling1.zw * _Speed * _Time.y ) + ( wave.xy - 0.5 ) * _WaveDistort;
 				half4 clouds = tex2Dlod( _CloudTex1, float4(coords1.xy,0,0) );
-				half3 cloudsFlow = tex2Dlod( _DistortTex1, float4(coords1.xy,0,0) ).xyz;
-				cloudsFlow.xy -= 0.5;
+				half3 cloudsFlow = tex2Dlod( _FlowTex1, float4(coords1.xy,0,0) ).xyz;
 
 				// set up time for second clouds layer
-				float speed = _DistSpeed * _Speed * 10;
-				float dist = _DistAmount;
+				float speed = _FlowSpeed * _Speed * 10;
 				float timeFrac1 = frac( _Time.y * speed );
 				float timeFrac2 = frac( _Time.y * speed + 0.5 );
 				float timeLerp  = abs( timeFrac1 * 2.0 - 1.0 );
-				timeFrac1 = ( timeFrac1 * dist ) - ( 0.5 * dist );
-				timeFrac2 = ( timeFrac2 * dist ) - ( 0.5 * dist );
+				timeFrac1 = ( timeFrac1 - 0.5 ) * _FlowAmount;
+				timeFrac2 = ( timeFrac2 - 0.5 ) * _FlowAmount;
 
 				// second cloud layer uses flow map
-				float2 coords2 = coords1 * tiling2.xy + tiling2.zw;
-				half4 clouds2 = tex2Dlod( _CloudTex2, float4(coords2.xy + cloudsFlow.xy * timeFrac1,0,0)  );
-				half4 clouds2b = tex2Dlod( _CloudTex2, float4(coords2.xy + cloudsFlow.xy * timeFrac2 + 0.5,0,0)  );
+				float2 coords2 = coords1 * _Tiling2.xy + ( _Tiling2.zw * _Speed * _Time.y );
+				half4 clouds2 = tex2Dlod( _CloudTex2, float4(coords2.xy + ( cloudsFlow.xy - 0.5 ) * timeFrac1,0,0)  );
+				half4 clouds2b = tex2Dlod( _CloudTex2, float4(coords2.xy + ( cloudsFlow.xy - 0.5 ) * timeFrac2 + 0.5,0,0)  );
 				clouds2 = lerp( clouds2, clouds2b, timeLerp);
 				clouds += ( clouds2 - 0.5 ) * _Cloud2Amount * cloudsFlow.z;
 
@@ -158,26 +145,26 @@
 				clouds.w = clouds.w * _CloudScale + _CloudBias;
 
 				// overhead light color
-				float3 coords4 = float3( uv.xy * tiling4.xy + tiling4.zw, 0.0 );
+				float3 coords4 = float3( uv.xy * _TilingColor.xy + ( _TilingColor.zw * _Speed * _Time.y ), 0.0 );
 				half4 cloudColor = tex2Dlod( _ColorTex, float4(coords4.xy,0,0)  );
 
 				// cloud color based on density
-				half cloudColorMask = 1.0 - saturate( clouds.w );
-				cloudColorMask = pow( cloudColorMask, _ColPow );
-				clouds.xyz *= lerp( _Color2.xyz, _Color.xyz * cloudColor.xyz * _ColFactor, cloudColorMask );
+				half cloudHightMask = 1.0 - saturate( clouds.w );
+				cloudHightMask = pow( cloudHightMask, _ColPow );
+				clouds.xyz *= lerp( _Color2.xyz, _Color.xyz * cloudColor.xyz * _ColFactor, cloudHightMask );
 
 				// subtract alpha based on height
 				half cloudSub = 1.0 - uv.z;
-				clouds.w = clouds.w - cloudSub * cloudSub;// * cloudSub;
+				clouds.w = clouds.w - cloudSub * cloudSub;
 
 				// multiply density
-				clouds.w = saturate( clouds.w * _CloudDensity + densityAdd );
+				clouds.w = saturate( clouds.w * _CloudDensity );
 
 				// add extra density
 				clouds.w = saturate( clouds.w + densityAdd );
 
 				// add Sunlight
-				clouds.xyz += sunTrans * cloudColorMask;
+				clouds.xyz += sunTrans * cloudHightMask;
 
 				// premultiply alpha
 				clouds.xyz *= clouds.w;
@@ -187,53 +174,52 @@
 
 			fixed4 frag (v2f IN) : SV_Target
 			{
-
+				// generate a view direction fromt he world position of the skybox mesh
 				float3 viewDir = normalize( IN.worldPos - _WorldSpaceCameraPos );
 
-				// Add a little bit of up vector towards the horizon
-				// this will give the illusion of a curved sky and keep the clouds 
-				// from being a flat plane off into the distance
-				float3 traceDir = normalize( viewDir + float3(0,lerp(0.1,0,viewDir.y),0) );
+				// get the falloff to the horizon
+				float viewFalloff = 1.0 - saturate( dot( viewDir, float3(0,1,0) ) );
 
-				float3 worldPos = _WorldSpaceCameraPos + traceDir * ( ( (_CloudHeight * _Scale ) - _WorldSpaceCameraPos.y ) / max( traceDir.y, 0.00001) );
-				float3 uv = float3( worldPos.xz * 0.01, 0 ) *  1.0 / _Scale;
+				// Add some up vector to the horizon to pull the clouds down
+				float3 traceDir = normalize( viewDir + float3(0,viewFalloff * 0.1,0) );
 
-				float oneOverScale = 1.0 / _Scale;
-				float4 tiling1 = float4( _Tiling1.xy, _Tiling1.zw * _Speed * _Time.y );
-				float4 tiling2 = float4( _Tiling2.xy, _Tiling2.zw * _Speed * _Time.y );
-				float4 tiling3 = float4( _TilingWave.xy, _TilingWave.zw * _Speed * _Time.y );
-				float4 tiling4 = float4( _TilingColor.xy, _TilingColor.zw * _Speed * _Time.y );
+				// Generate uvs from the world position of the sky
+				float3 worldPos = _WorldSpaceCameraPos + traceDir * ( ( _CloudHeight - _WorldSpaceCameraPos.y ) / max( traceDir.y, 0.00001) );
+				float3 uv = float3( worldPos.xz * 0.01 * _Scale, 0 );
 
-				half viewFalloff = pow( 1.0 - saturate( viewDir.y ), 5 ) * 5.0 + 1.0;
-
+				// Make a spot for the sun, make it brighter at the horizon
 				float lightDot = saturate( dot( _WorldSpaceLightPos0, viewDir ) * 0.5 + 0.5 );
 				half3 lightTrans = _LightColor0.xyz * ( pow(lightDot,_LightSpread.x) * _LightSpread.y + pow(lightDot,_LightSpread.z) * _LightSpread.w );
-				half3 lightTransTotal = lightTrans * viewFalloff;
+				half3 lightTransTotal = lightTrans * pow(viewFalloff, 5 ) * 5.0 + 1.0;
 
-				half4 fogColorDensity = FogColorDensitySky(viewDir);
-
-				half3 uvStep = half3(_BumpOffset * ( 1.0 / traceDir.y),_BumpOffset * ( 1.0 / traceDir.y),1.0) * half3( traceDir.xz,1.0) * ( 1.0 / _Steps );
+				// Figure out how for to move through the uvs for each step of the parallax offset
+				half3 uvStep = half3( traceDir.xz * _BumpOffset * ( 1.0 / traceDir.y), 1.0 ) * ( 1.0 / _Steps );
 				uv += uvStep * rand3( IN.worldPos + _SinTime.w );
 
-				half4 accColor = fogColorDensity;
+				// initialize the accumulated color with fog
+				half4 accColor = FogColorDensitySky(viewDir);
 				half4 clouds = 0;
 				[loop]for( int j = 0; j < _Steps; j++ ){
-					// we filled the alpha
+					// if we filled the alpha then break out of the loop
 					if( accColor.w >= 1.0 ) { break; }
 
+					// add the step offset to the uv
 					uv += uvStep;
-					clouds = SampleClouds(uv, tiling1, tiling2, tiling3, tiling4, lightTransTotal, 0.0 );
+
+					// sample the clouds at the current position
+					clouds = SampleClouds(uv, lightTransTotal, 0.0 );
+
+					// add the current cloud color with front to back blending
 					accColor += clouds * ( 1.0 - accColor.w );
 				}
 
 				// one last sample to fill gaps
 				uv += uvStep;
-				clouds = SampleClouds(uv, tiling1, tiling2, tiling3, tiling4, lightTransTotal, 1.0 );
+				clouds = SampleClouds(uv, lightTransTotal, 1.0 );
 				accColor += clouds * ( 1.0 - accColor.w );
 
-				half4 finalColor = accColor;
-
-				return finalColor;
+				// return the color!
+				return accColor;
 			}
 			ENDCG
 		}
