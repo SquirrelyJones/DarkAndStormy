@@ -6,7 +6,7 @@ Material:
   m_ObjectHideFlags: 0
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
-  m_Name: Clouds_Scifi
+  m_Name: Clouds_Scifi_CG
   m_Shader: {fileID: 4800000, guid: 86f4829d12213e54880ad281220eb019, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 4

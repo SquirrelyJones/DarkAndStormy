@@ -1,4 +1,4 @@
-﻿Shader "Skybox/Clouds"
+﻿Shader "Skybox/Clouds CG"
 {
 	Properties
 	{
@@ -42,8 +42,11 @@
 	}
 	SubShader
 	{
-		Tags { "RenderType"="Opaque" }
-		LOD 100
+		//Tags { "RenderType"="Opaque" }
+		//LOD 100
+		// URP Compatible
+		Tags { "Queue"="Background" "RenderType"="Background" "PreviewType"="Skybox" }
+		Cull Off ZWrite Off
 
 		Pass
 		{
